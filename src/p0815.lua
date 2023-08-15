@@ -351,23 +351,36 @@ end
 
 --从滚筒末端抓取
 function grabFromConveyor()
+  --如果上一个动作不是  拍滚筒线末端  ,就报错
   if N_Action.num ~= (0 - n_visionOnConveyor) then
     Stop()
   end
   N_Action.num = n_grabFromConveyor
   SetDO("DO_LIGHT",0)
   SetDO("DO_UP",1)  
+  --当前位置做旋转,旋转值来自 视觉拍照 计算出的 N_conveyorR + 45 
+  --之所以加45是为了跟卡扣有夹角
   local current = GetJointTarget("Xyzw")
   Kconveyor.robax.rax_4 = N_conveyorR.num + 45
+  --桁架的转角只支持 -180 到 180 
   if Kconveyor.robax.rax_4 > 180 then
     Kconveyor.robax.rax_4 = Kconveyor.robax.rax_4 - 360
   end
+  if Kconveyor.robax.rax_4 < -180 then
+    Kconveyor.robax.rax_4 = Kconveyor.robax.rax_4 + 360
+  end
   Kconveyor.robax.rax_3 = current.robax.rax_3
+  --X Y的坐标来自视觉
   Kconveyor.robax.rax_1 = N_VX.num
   Kconveyor.robax.rax_2 = N_VY.num  
   MoveAbsJ(Kconveyor,v_grab,fine,tool0,wobj0,load0)
+  --打开爪子准备抓轮子
   openGrab()
-  Kconveyor.robax.rax_3 = n_conveyor
+  if N_productHeight.num == 166 then
+    Kconveyor.robax.rax_3 = n_conveyor
+  elseif N_productHeight.num == 332 then
+    Kconveyor.robax.rax_3 = n_conveyor - 166
+  end
   MoveAbsJ(Kconveyor,v_grab,fine,tool0,wobj0,load0)
   closeGrab()
   Kconveyor.robax.rax_3 = current.robax.rax_3
@@ -1235,7 +1248,7 @@ while true do
     Sleep(100)
   end
   SetDO("DO_PgReset",0)
-  while ((PR_ProductCategory.num <1) and (PR_ProductCategory.num >4))  do
+  while ((PR_ProductCategory.num <1) or (PR_ProductCategory.num >4))  do
     Sleep(100)
   end
   if (PR_ProductCategory.num == 1) or (PR_ProductCategory.num == 3) then
@@ -1283,8 +1296,7 @@ while true do
       Stop()
     end
     N_Action.num = 0 - n_suckPartition    
-    WaitDO("DO_AllowCrawl",0)
-    
+    WaitDO("DO_AllowCrawl",0)    
     placePartition()
   --吸隔板
   elseif PR_Pro_Num.num == 9 then
